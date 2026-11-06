@@ -1,0 +1,131 @@
+# Two WhatsApp sessions, one image.
+# Each service has its own env file, auth volume, token, and host port.
+#
+#   cp .env.personal.example .env.personal
+#   # put a unique MCP_BEARER_TOKEN in that file (openssl rand -hex 32)
+#   # leave ALLOW_SEND and ALLOW_DELETE false until you mean to enable them
+#   docker compose up -d --build personal
+#   docker compose logs -f personal
+#
+# Assistant is optional and needs its own env file before it can start:
+#   cp .env.assistant.example .env.assistant
+#
+# David is a third service on host port 8788 (the same port as the stopped assistant).
+# It does not start on a plain `docker compose up`. Start only David with:
+#   docker compose build david && docker compose up -d --no-deps --force-recreate david
+# Do not recreate personal for a David deploy. Never `docker compose down -v`.
+# Do not run assistant and david at the same time.
+
+name: whatsapp-mcp
+
+services:
+  personal:
+    image: whatsapp-mcp:local
+    build: .
+    env_file:
+      - .env.personal
+    environment:
+      PORT: "8787"
+      HOST: "0.0.0.0"
+      AUTH_DIR: /data/auth
+      SESSION_ROLE: personal
+      # ALLOW_SEND and ALLOW_DELETE stay in the env file. Examples default both
+      # to false. This block must not turn sending or deletion on.
+      # Host allow-list while bound to 0.0.0.0. The tunnel sample sends Host: localhost.
+      # Add the public hostname if the proxy forwards it unchanged.
+      # /internal/* still 404s when Cf-Ray, Cf-Connecting-Ip, Cf-Ipcountry, or
+      # X-Forwarded-For is set, which is how tunnel traffic is recognized.
+      # `personal` is the Compose DNS name David uses for GET /internal/lid-pn.
+      ALLOWED_HOSTS: "localhost,127.0.0.1,[::1],personal"
+      # Personal /admin reads David here. Not a public route. The secret stays in the env file.
+      DAVID_ADMIN_URL: "http://david:8788"
+    ports:
+      # Host loopback only. Put Cloudflare Tunnel (or similar) in front.
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - personal_auth:/data/auth
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # Legacy PA slot. Leave it stopped once david is running. Both publish 127.0.0.1:8788.
+  assistant:
+    image: whatsapp-mcp:local
+    build: .
+    env_file:
+      - .env.assistant
+    environment:
+      PORT: "8788"
+      HOST: "0.0.0.0"
+      AUTH_DIR: /data/auth
+      SESSION_ROLE: assistant
+      # Sending and deletion are opt-in in .env.assistant (default false).
+      ALLOWED_HOSTS: "localhost,127.0.0.1,[::1]"
+    ports:
+      - "127.0.0.1:8788:8788"
+    volumes:
+      - assistant_auth:/data/auth
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # Opt-in. `docker compose up` does not start this service, and a missing
+  # .env.david does not block personal or assistant commands (Compose v2.24+).
+  david:
+    profiles: ["david"]
+    image: whatsapp-mcp:local
+    build: .
+    env_file:
+      - path: .env.david
+        required: false
+    environment:
+      PORT: "8788"
+      HOST: "0.0.0.0"
+      AUTH_DIR: /data/auth
+      SESSION_ROLE: david
+      DAVID_MODE: "true"
+      # Sending and deletion are opt-in in .env.david. Both example values are
+      # false. Owner-command replies and callbacks also stay silent until
+      # ALLOW_SEND=true. Do not set those flags in this environment block.
+      # `david` is the Compose DNS name. Personal sends that Host when it reads
+      # /internal/admin. localhost stays for the host healthcheck. Do not publish
+      # this port beyond loopback and do not add a public admin hostname.
+      ALLOWED_HOSTS: "localhost,127.0.0.1,[::1],david"
+      # David's LID fallback. Its own Baileys mapping is tried first.
+      PERSONAL_LID_URL: "http://personal:8787"
+    ports:
+      - "127.0.0.1:8788:8788"
+    volumes:
+      - david_auth:/data/auth
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  personal_auth:
+  assistant_auth:
+  david_auth:

@@ -1,0 +1,50 @@
+{
+  "name": "whatsapp-mcp",
+  "version": "1.0.0",
+  "description": "Self-hosted WhatsApp bridge: Baileys sessions exposed as remote MCP (Streamable HTTP) for any MCP client",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benkimbuilds/whatsapp-mcp.git"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
+    "test": "node scripts/history-test.mjs && node scripts/oauth-test.mjs && node scripts/delete-test.mjs && node scripts/group-info-test.mjs && node scripts/search-test.mjs && node scripts/activity-test.mjs && node scripts/mentions-test.mjs && node scripts/draft-test.mjs && node scripts/contact-test.mjs && node scripts/action-test.mjs && node scripts/admin-test.mjs && node scripts/admin-peer-test.mjs && node scripts/webhook-test.mjs && node scripts/david-test.mjs && node scripts/approved-test.mjs && node scripts/session-test.mjs && node scripts/blocklist-test.mjs && node scripts/blocklist-migration-test.mjs && node scripts/blocklist-perf-test.mjs && node scripts/owner-name-test.mjs && node scripts/media-test.mjs && node scripts/reply-react-test.mjs && node scripts/media-send-test.mjs && node scripts/recipient-test.mjs && node scripts/privacy-scan.mjs",
+    "privacy": "node scripts/privacy-scan.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "author": "Benjamin Kim",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@modelcontextprotocol/express": "^2.0.1",
+    "@modelcontextprotocol/node": "^2.1.0",
+    "@modelcontextprotocol/server": "^2.2.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc.14",
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.13.10",
+    "@types/qrcode-terminal": "^0.12.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
